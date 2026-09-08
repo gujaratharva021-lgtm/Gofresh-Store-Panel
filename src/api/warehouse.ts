@@ -79,7 +79,7 @@ export const startPicking = (orderId: number) =>
 
 export const markPickItem = (
   itemId: number,
-  data: { status: PickItemStatus; quantity_picked?: number; reason?: string }
+  data: { status: PickItemStatus; quantity_picked?: number; reason?: string; scanned_barcode?: string }
 ) => apiClient.put(`/warehouse/picking/items/${itemId}`, data).then((r) => r.data as PickingTaskItem)
 
 export const completePicking = (orderId: number) =>
@@ -95,9 +95,18 @@ export const getPackingTask = (orderId: number) =>
 export const startPacking = (orderId: number) =>
   apiClient.put(`/warehouse/packing/${orderId}/start`).then((r) => r.data as PackingTask)
 
-export const completePacking = (orderId: number) =>
+export const completePacking = (
+  orderId: number,
+  payload: {
+    seal_number: string
+    qc_ambient_ok?: boolean
+    qc_chilled_ok?: boolean
+    qc_frozen_ok?: boolean
+    qc_notes?: string
+  },
+) =>
   apiClient
-    .put(`/warehouse/packing/${orderId}/complete`)
+    .put(`/warehouse/packing/${orderId}/complete`, payload)
     .then((r) => r.data as { success: boolean; packing_task: PackingTask; order_status: string })
 
 

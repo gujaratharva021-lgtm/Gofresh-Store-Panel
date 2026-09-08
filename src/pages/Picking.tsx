@@ -14,7 +14,7 @@ function ItemRow({
 }: {
   item: PickingTaskItem
   orderId: number
-  onMark: (status: 'picked' | 'unavailable' | 'short', quantityPicked?: number, reason?: string) => void
+  onMark: (status: 'picked' | 'unavailable' | 'short', quantityPicked?: number, reason?: string, scannedBarcode?: string) => void
   isBusy: boolean
 }) {
   const [showShortInput, setShowShortInput] = useState(false)
@@ -36,7 +36,7 @@ function ItemRow({
       const result = await scanPickItem(item.id, code.trim())
       if (result.match) {
         setScanState('match')
-        onMark('picked')
+        onMark('picked', undefined, undefined, code.trim())
       } else {
         setScanState('mismatch')
       }
@@ -128,19 +128,27 @@ function ItemRow({
 
       {scanState === 'mismatch' && !isDone && (
         <div className="mt-2 text-xs text-rose-400">
-          Product mismatch â€” verify SKU.
+          Product mismatch - verify SKU.
         </div>
+      )}
+
+      {!isDone && item.product?.barcode && (
+        <p className="mt-2 text-xs text-slate-500">
+          This product requires a barcode scan to pick - manual marking is not available.
+        </p>
       )}
 
       {!isDone && (
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            disabled={isBusy}
-            onClick={() => onMark('picked')}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors disabled:opacity-50"
-          >
-            Mark Picked (manual)
-          </button>
+          {!item.product?.barcode && (
+            <button
+              disabled={isBusy}
+              onClick={() => onMark('picked')}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              Mark Picked (manual)
+            </button>
+          )}
           <button
             disabled={isBusy}
             onClick={() => setShowShortInput((s) => !s)}
@@ -252,12 +260,13 @@ export default function Picking() {
     item: PickingTaskItem,
     status: 'picked' | 'unavailable' | 'short',
     quantityPicked?: number,
-    reason?: string
+    reason?: string,
+    scannedBarcode?: string
   ) {
     setBusyItemId(item.id)
     setError(null)
     try {
-      await markPickItem(item.id, { status, quantity_picked: quantityPicked, reason })
+      await markPickItem(item.id, { status, quantity_picked: quantityPicked, reason, scanned_barcode: scannedBarcode })
       await load()
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to update item.'))
@@ -332,7 +341,7 @@ export default function Picking() {
               item={item}
               orderId={task.order_id}
               isBusy={busyItemId === item.id}
-              onMark={(status, qty, reason) => handleMark(item, status, qty, reason)}
+              onMark={(status, qty, reason, scannedBarcode) => handleMark(item, status, qty, reason, scannedBarcode)}
             />
           ))}
         </div>
